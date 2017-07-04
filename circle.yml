@@ -11,20 +11,24 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - run:
-          name: Build
-          command: |
-            set -x
-            # build the docker container
-            docker build --rm=false --tag ${DIND_IMAGE} .
-            # start the docker-in-docker
-            dind=$(docker run --privileged --name some-docker -d ${DIND_IMAGE})
-            docker ps
-            docker logs ${dind}
+      - run: |
+          set -ex
+          set -o pipefail
 
-            # build the test container
-            docker build --rm=false --tag ${TEST_IMAGE} test/.
+          # build the dind image
+          docker build --rm=false --tag ${DIND_IMAGE} .
 
-            # run the test container against the dind
-            test=$(docker run --rm --link ${dind} ${TEST_IMAGE})
+          # start the dind container
+          dind=$(docker run --privileged -d ${DIND_IMAGE})
+
+          # confirm it's running
+          docker ps
+          docker logs ${dind}
+
+          # attempt to build a container inside it
+          docker exec -it ${dind} docker build --tag ${TEST_IMAGE} test/.
+          docker exec -it ${dind} docker images
+          docker exec -it ${dind} docker run \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            ${TEST_IMAGE}
 
