@@ -6,7 +6,8 @@ jobs:
       - image: library/docker:17
     working_directory: /tmp/build
     environment:
-      IMAGE: localhost/docker-in-docker-circleci
+      DIND_IMAGE: localhost/docker-in-docker-circleci
+      TEST_IMAGE: localhost/docker-in-docker-circleci-test
     steps:
       - checkout
       - setup_remote_docker
@@ -15,9 +16,15 @@ jobs:
           command: |
             set -x
             # build the docker container
-            docker build --rm=false --tag ${IMAGE} .
+            docker build --rm=false --tag ${DIND_IMAGE} .
             # start the docker-in-docker
-            running=$(docker run --privileged --name some-docker -d ${IMAGE})
+            dind=$(docker run --privileged --name some-docker -d ${DIND_IMAGE})
             docker ps
-            docker logs ${running}
+            docker logs ${dind}
+
+            # build the test container
+            docker build --rm=false --tag ${TEST_IMAGE} test/.
+
+            # run the test container against the dind
+            test=$(docker run --rm --link ${dind} ${TEST_IMAGE})
 
