@@ -1,0 +1,23 @@
+---
+version: 2
+jobs:
+  build:
+    docker:
+      - image: library/docker:17
+    working_directory: /tmp/build
+    environment:
+      IMAGE: localhost/docker-in-docker-circleci
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build
+          command: |
+            set -x
+            # build the docker container
+            docker build --rm=false --tag ${IMAGE} .
+            # start the docker-in-docker
+            running=$(docker run --privileged --name some-docker -d ${IMAGE})
+            docker ps
+            docker logs ${running}
+
